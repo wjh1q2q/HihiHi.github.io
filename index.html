@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新年祝福弹幕</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft Yahei", sans-serif;
+        }
+
+        body {
+            background: linear-gradient(180deg, #e6f3ff 0%, #f0f8ff 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .control-panel {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        .control-panel textarea {
+            width: 100%;
+            height: 120px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            resize: none;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .control-panel button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #startBtn {
+            background: #ff6b81;
+            color: white;
+            margin-right: 10px;
+        }
+
+        #startBtn:hover {
+            background: #ff4757;
+        }
+
+        #generateLinkBtn {
+            background: #70a1ff;
+            color: white;
+        }
+
+        #generateLinkBtn:hover {
+            background: #5380e8;
+        }
+
+        #linkContainer {
+            margin-top: 12px;
+            padding: 12px;
+            background: #f1f2f6;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #linkInput {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        #copyBtn {
+            background: #5ebe7f;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+        }
+
+        #canvas {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            height: 600px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .message-card {
+            position: absolute;
+            width: 60%;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .heart-icon {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+
+        .card-body {
+            padding: 12px;
+            background: white;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <h1>新年祝福弹幕 💌</h1>
+    <div class="control-panel">
+        <textarea id="messageInput" placeholder="请输入新年祝福，每行一条"></textarea>
+        <button id="startBtn">开始播放弹幕</button>
+        <button id="generateLinkBtn">生成分享链接</button>
+        <div id="linkContainer">
+            <input type="text" id="linkInput" readonly>
+            <button id="copyBtn">复制链接</button>
+        </div>
+    </div>
+    <div id="canvas"></div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const messageInput = document.getElementById('messageInput');
+        const startBtn = document.getElementById('startBtn');
+        const generateLinkBtn = document.getElementById('generateLinkBtn');
+        const linkContainer = document.getElementById('linkContainer');
+        const linkInput = document.getElementById('linkInput');
+        const copyBtn = document.getElementById('copyBtn');
+
+        const headerColors = [
+            { top: '#ffd699', body: '#fff9e6', heart: '💛' },
+            { top: '#ff99cc', body: '#ffe6f2', heart: '💖' },
+            { top: '#99e6ff', body: '#e6f9ff', heart: '🧡' },
+            { top: '#cc99ff', body: '#f2e6ff', heart: '💝' },
+            { top: '#ff9999', body: '#ffe6e6', heart: '❤️' },
+            { top: '#99ccff', body: '#e6f2ff', heart: '💙' }
+        ];
+
+        let intervalId = null;
+        let currentLink = '';
+
+        // 从URL加载并自动播放
+        function loadMessagesFromUrl() {
+            const params = new URLSearchParams(window.location.search);
+            const encoded = params.get('messages');
+            if (encoded) {
+                try {
+                    const messages = decodeURIComponent(encoded).split('\n');
+                    messageInput.value = messages.join('\n');
+                    setTimeout(startPlayback, 300);
+                } catch (e) {
+                    console.error('加载消息失败:', e);
+                }
+            }
+        }
+
+        // 生成链接
+        function generateShareLink() {
+            const messages = messageInput.value.trim();
+            if (!messages) {
+                alert('请先输入祝福内容！');
+                return;
+            }
+            const encoded = encodeURIComponent(messages);
+            currentLink = window.location.origin + window.location.pathname + '?messages=' + encoded;
+            linkInput.value = currentLink;
+            linkContainer.style.display = 'flex';
+        }
+
+        // 复制链接（兼容所有浏览器）
+        copyBtn.onclick = function () {
+            if (!currentLink) return;
+            linkInput.select();
+            linkInput.setSelectionRange(0, 99999);
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    copyBtn.textContent = '已复制！';
+                    setTimeout(() => { copyBtn.textContent = '复制链接'; }, 1500);
+                } else {
+                    alert('复制失败，请手动复制链接。');
+                }
+            } catch (err) {
+                console.error('复制失败:', err);
+                alert('复制失败，请手动复制链接。');
+            }
+        };
+
+        // 播放弹幕
+        function startPlayback() {
+            if (intervalId) clearInterval(intervalId);
+            canvas.innerHTML = '';
+            const messages = messageInput.value.trim().split('\n').filter(x => x.trim());
+            if (!messages.length) {
+                alert('请输入至少一条祝福！');
+                return;
+       
